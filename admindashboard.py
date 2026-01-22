@@ -3,7 +3,7 @@ import sys
 import os
 
 # ABSOLUTE PATH SOLUTION
-PROJECT_ROOT = r"C:\Users\Murtaza\Pictures\quran-kiosk-led"
+PROJECT_ROOT = r"/mount/src/mukhayum-scoreboard"  # Changed for Streamlit Cloud
 
 # Add to Python path
 if PROJECT_ROOT not in sys.path:
@@ -19,7 +19,7 @@ import time
 from datetime import datetime
 import plotly.express as px
 
-# Import from shared module
+# Finally import from shared
 from shared.data_loader import get_team_data, get_student_data
 # ========== END IMPORTS ==========
 
@@ -615,3 +615,4 @@ st.markdown(f"""
 time.sleep(refresh_rate)
 
 st.rerun()
+
