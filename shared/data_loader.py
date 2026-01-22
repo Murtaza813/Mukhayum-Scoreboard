@@ -19,7 +19,7 @@ def get_google_sheet():
 def get_team_data():
     """Get team leaderboard data"""
     try:
-        sheet = get_google_sheet()
+        sheet = get_google_sheet()  # This calls the function above
         ws = sheet.worksheet("OFFICE WORKING")
         
         # Teams are in rows 48-51
@@ -61,7 +61,8 @@ def get_team_data():
         df['rank'] = range(1, len(df) + 1)
         return df
         
-    except Exception:
+    except Exception as e:
+        st.error(f"Error getting team data: {e}")
         # Return fallback data
         return pd.DataFrame({
             'team': ['الشمس', 'القمر', 'الزهرة', 'المشتري'],
@@ -73,7 +74,7 @@ def get_team_data():
 def get_student_data():
     """Get individual student performance"""
     try:
-        sheet = get_google_sheet()
+        sheet = get_google_sheet()  # This calls the function above
         ws = sheet.worksheet("OFFICE WORKING")
         
         # Get student data from rows 4-43
@@ -95,5 +96,6 @@ def get_student_data():
         
         return pd.DataFrame(students)
         
-    except Exception:
+    except Exception as e:
+        st.error(f"Error getting student data: {e}")
         return pd.DataFrame()
