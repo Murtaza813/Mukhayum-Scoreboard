@@ -2,22 +2,18 @@
 import sys
 import os
 import time
+from datetime import datetime
 
-# ABSOLUTE PATH SOLUTION  
-PROJECT_ROOT = r"/mount/src/mukhayum-scoreboard"  # Changed for Streamlit Cloud
+# For Streamlit Cloud environment
+PROJECT_ROOT = "/mount/src/mukhayum-scoreboard"
 
-# Add to Python path
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-# Import Streamlit FIRST
 import streamlit as st
-
-# Then other imports
 import pandas as pd
-from datetime import datetime
 
-# Finally import from shared
+# Import from shared module
 from shared.data_loader import get_team_data, get_student_data
 # ========== END IMPORTS ==========
 
@@ -401,4 +397,5 @@ auto_refresh_js = f"""
 
 
 st.markdown(auto_refresh_js, unsafe_allow_html=True)
+
 
