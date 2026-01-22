@@ -1,9 +1,11 @@
 # ========== IMPORTS FIRST ==========
 import sys
 import os
+import time
+from datetime import datetime
 
-# ABSOLUTE PATH SOLUTION
-PROJECT_ROOT = r"/mount/src/mukhayum-scoreboard"  # Changed for Streamlit Cloud
+# For Streamlit Cloud environment
+PROJECT_ROOT = "/mount/src/mukhayum-scoreboard"
 
 # Add to Python path
 if PROJECT_ROOT not in sys.path:
@@ -15,14 +17,11 @@ import streamlit as st
 # Then other imports
 import pandas as pd
 import numpy as np
-import time
-from datetime import datetime
 import plotly.express as px
 
-# Finally import from shared
+# Import from shared module - ONLY THESE FUNCTIONS
 from shared.data_loader import get_team_data, get_student_data
 # ========== END IMPORTS ==========
-
 # Page configuration
 st.set_page_config(
     page_title="Quran Live Scoreboard",
@@ -615,4 +614,5 @@ st.markdown(f"""
 time.sleep(refresh_rate)
 
 st.rerun()
+
 
