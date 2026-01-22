@@ -20,7 +20,7 @@ import numpy as np
 import plotly.express as px
 
 # Import from shared module - ONLY THESE FUNCTIONS
-from shared.data_loader import get_team_data, get_student_data, get_google_sheet
+from shared.data_loader import get_team_data, get_student_data, get_weekly_data, get_special_achievements
 # ========== END IMPORTS ==========
 
 # Page configuration
@@ -617,6 +617,7 @@ st.markdown(f"""
 time.sleep(refresh_rate)
 
 st.rerun()
+
 
 
 
