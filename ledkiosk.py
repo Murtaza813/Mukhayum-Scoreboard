@@ -33,7 +33,7 @@ def get_google_sheet():
     )
     return gspread.authorize(credentials).open_by_key(SPREADSHEET_ID)
 
-@st.cache_data(ttl=10, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def get_team_data():
     """Get team leaderboard data - Silent"""
     try:
@@ -85,7 +85,7 @@ def get_team_data():
             'rank': [1, 2, 3, 4]
         })
 
-@st.cache_data(ttl=30, show_spinner=False)
+@st.cache_data(ttl=180, show_spinner=False)
 def get_student_data():
     """Get individual student performance - Silent"""
     try:
@@ -397,5 +397,6 @@ auto_refresh_js = f"""
     }}, 10000); // 10 seconds
 </script>
 """
+
 
 st.markdown(auto_refresh_js, unsafe_allow_html=True)
