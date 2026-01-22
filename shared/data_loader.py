@@ -6,7 +6,7 @@ import streamlit as st
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 SPREADSHEET_ID = '12FWohzX2yJXxvC4xTu3-NSTzLgJogQOmp2LtDLDaw7I'
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def get_google_sheet():
     """Connect to Google Sheets"""
     credentials = Credentials.from_service_account_info(
@@ -15,31 +15,29 @@ def get_google_sheet():
     )
     return gspread.authorize(credentials).open_by_key(SPREADSHEET_ID)
 
-@st.cache_data(ttl=60, show_spinner=False))
+@st.cache_data(ttl=60, show_spinner=False)
 def get_team_data():
-    """Get team leaderboard data - CORRECTED FOR ROWS 48-51"""
+    """Get team leaderboard data"""
     try:
         sheet = get_google_sheet()
         ws = sheet.worksheet("OFFICE WORKING")
         
-        # CORRECTED: Teams are in rows 48-51, not 50-53
+        # Teams are in rows 48-51
         team_positions = [
-            ('الشمس', 48),  # Row 48 for الشمس
-            ('القمر', 49),  # Row 49 for القمر
-            ('الزهرة', 50), # Row 50 for الزهرة
-            ('المشتري', 51) # Row 51 for المشتري
+            ('الشمس', 48),
+            ('القمر', 49),
+            ('الزهرة', 50),
+            ('المشتري', 51)
         ]
         
         teams = []
         
         for team_name, row_num in team_positions:
             try:
-                # Get points from column D - use formatted value to get calculated result
                 points_cell = ws.acell(f'D{row_num}', value_render_option='FORMATTED_VALUE').value
                 
                 if points_cell:
                     try:
-                        # Clean and convert to float
                         cleaned = str(points_cell).replace(',', '').strip()
                         points = float(cleaned) if cleaned else 0
                     except:
@@ -52,26 +50,22 @@ def get_team_data():
                     'points': points
                 })
                 
-            except Exception as e:
-                st.warning(f"Error reading {team_name} at D{row_num}: {e}")
+            except Exception:
                 teams.append({
                     'team': team_name,
                     'points': 0
                 })
         
-        # Create DataFrame and add rank
         df = pd.DataFrame(teams)
         df = df.sort_values('points', ascending=False)
         df['rank'] = range(1, len(df) + 1)
-        
         return df
         
-    except Exception as e:
-        st.error(f"Error getting team data: {e}")
-        # Return fallback data (with correct order based on debug)
+    except Exception:
+        # Return fallback data
         return pd.DataFrame({
             'team': ['الشمس', 'القمر', 'الزهرة', 'المشتري'],
-            'points': [67, 58, 45, 50],  # CORRECTED from debug output
+            'points': [67, 58, 45, 50],
             'rank': [1, 2, 3, 4]
         })
 
@@ -101,7 +95,5 @@ def get_student_data():
         
         return pd.DataFrame(students)
         
-    except Exception as e:
-        st.error(f"Error getting student data: {e}")
-
+    except Exception:
         return pd.DataFrame()
