@@ -22,6 +22,7 @@ import plotly.express as px
 # Import from shared module - ONLY THESE FUNCTIONS
 from shared.data_loader import get_team_data, get_student_data
 # ========== END IMPORTS ==========
+
 # Page configuration
 st.set_page_config(
     page_title="Quran Live Scoreboard",
@@ -208,7 +209,7 @@ with st.sidebar:
     st.title("Quran Scoreboard")
     st.markdown("---")
     
-    refresh_rate = st.slider("Refresh rate (seconds)", 2, 30, 5)
+    refresh_rate = st.slider("Refresh rate (seconds)", 10, 300, 30)
     
     if st.button("🔄 Refresh Now"):
         st.cache_data.clear()
@@ -218,19 +219,21 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 📊 Data Status")
     
+    # Test connection by calling get_team_data, not get_google_sheet
     try:
-        sheet = get_google_sheet()
+        df = get_team_data()
         last_update = datetime.now().strftime("%H:%M:%S")
-        st.success(f"✅ Connected to Google Sheets")
-        st.caption(f"Last update: {last_update}")
+        if not df.empty:
+            st.success(f"✅ Connected to Google Sheets")
+            st.caption(f"Last update: {last_update}")
+            st.caption(f"Teams loaded: {len(df)}")
+        else:
+            st.warning("⚠️ No team data found")
     except Exception as e:
         st.error(f"❌ Connection failed: {e}")
 
 # ========== MAIN CONTENT ==========
 st.markdown('<h1 class="main-header">📖 Quran Live Scoreboard</h1>', unsafe_allow_html=True)
-
-# Auto-refresh
-time.sleep(refresh_rate)
 
 # Create tabs
 tab1, tab2, tab3, tab4 = st.tabs(["🏆 Team Leaderboard", "📅 Weekly Breakdown", "👥 Student Performance", "🎯 Special Achievements"])
@@ -614,5 +617,6 @@ st.markdown(f"""
 time.sleep(refresh_rate)
 
 st.rerun()
+
 
 
