@@ -484,10 +484,8 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# Auto-refresh
-time.sleep(refresh_rate)
 
-st.rerun()
+
 
 
 
