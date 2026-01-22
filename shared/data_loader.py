@@ -15,7 +15,7 @@ def get_google_sheet():
     )
     return gspread.authorize(credentials).open_by_key(SPREADSHEET_ID)
 
-@st.cache_data(ttl=5)
+@st.cache_data(ttl=60, show_spinner=False))
 def get_team_data():
     """Get team leaderboard data - CORRECTED FOR ROWS 48-51"""
     try:
@@ -75,7 +75,7 @@ def get_team_data():
             'rank': [1, 2, 3, 4]
         })
 
-@st.cache_data(ttl=10)
+@st.cache_data(ttl=120, show_spinner=False)
 def get_student_data():
     """Get individual student performance"""
     try:
@@ -103,4 +103,5 @@ def get_student_data():
         
     except Exception as e:
         st.error(f"Error getting student data: {e}")
+
         return pd.DataFrame()
