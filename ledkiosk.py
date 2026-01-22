@@ -3,8 +3,8 @@ import sys
 import os
 import time
 
-# ABSOLUTE PATH SOLUTION
-PROJECT_ROOT = r"C:\Users\Murtaza\Pictures\quran-kiosk-led"
+# ABSOLUTE PATH SOLUTION  
+PROJECT_ROOT = r"/mount/src/mukhayum-scoreboard"  # Changed for Streamlit Cloud
 
 # Add to Python path
 if PROJECT_ROOT not in sys.path:
@@ -15,9 +15,10 @@ import streamlit as st
 
 # Then other imports
 import pandas as pd
-import gspread
-from google.oauth2.service_account import Credentials
 from datetime import datetime
+
+# Finally import from shared
+from shared.data_loader import get_team_data, get_student_data
 # ========== END IMPORTS ==========
 
 # ========== GOOGLE SHEETS CONNECTION ==========
@@ -400,3 +401,4 @@ auto_refresh_js = f"""
 
 
 st.markdown(auto_refresh_js, unsafe_allow_html=True)
+
