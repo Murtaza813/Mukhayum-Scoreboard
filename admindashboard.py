@@ -20,7 +20,7 @@ from datetime import datetime
 import plotly.express as px
 
 # Import from shared module
-from shared.data_loader import get_team_data, get_student_data, get_google_sheet
+from shared.data_loader import get_team_data, get_student_data
 # ========== END IMPORTS ==========
 
 # Page configuration
@@ -613,4 +613,5 @@ st.markdown(f"""
 
 # Auto-refresh
 time.sleep(refresh_rate)
+
 st.rerun()
