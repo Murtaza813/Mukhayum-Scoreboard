@@ -19,7 +19,7 @@ def get_google_sheet():
 def get_team_data():
     """Get team leaderboard data"""
     try:
-        sheet = get_google_sheet()  # This calls the function above
+        sheet = get_google_sheet()
         ws = sheet.worksheet("OFFICE WORKING")
         
         # Teams are in rows 48-51
@@ -74,7 +74,7 @@ def get_team_data():
 def get_student_data():
     """Get individual student performance"""
     try:
-        sheet = get_google_sheet()  # This calls the function above
+        sheet = get_google_sheet()
         ws = sheet.worksheet("OFFICE WORKING")
         
         # Get student data from rows 4-43
@@ -95,8 +95,63 @@ def get_student_data():
                 })
         
         return pd.DataFrame(students)
+        
+    except Exception as e:
+        st.error(f"Error getting student data: {e}")
+        return pd.DataFrame()
 
-@st.cache_data(ttl=300, show_spinner=False)  # 5 minutes cache - achievements don't change often
+@st.cache_data(ttl=300, show_spinner=False)
+def get_weekly_data():
+    """Get weekly breakdown"""
+    try:
+        sheet = get_google_sheet()
+        ws = sheet.worksheet("OFFICE WORKING")
+        
+        # Weekly points from your sheet structure
+        weekly_data = []
+        teams = ['الشمس', 'القمر', 'الزهرة', 'المشتري']
+        
+        # Try to get actual weekly data
+        week_columns = ['I', 'M', 'Q', 'U', 'Y']
+        week_names = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5']
+        
+        # Team rows in the totals section
+        team_rows = {
+            'الشمس': 48,
+            'القمر': 49, 
+            'الزهرة': 50,
+            'المشتري': 51
+        }
+        
+        for team in teams:
+            row = team_rows.get(team, 48)
+            for i, col in enumerate(week_columns):
+                try:
+                    cell_value = ws.acell(f'{col}{row}').value
+                    if cell_value:
+                        try:
+                            points = float(cell_value)
+                        except:
+                            points = 0
+                    else:
+                        points = 0
+                except:
+                    points = 0
+                
+                weekly_data.append({
+                    'team': team,
+                    'week': week_names[i],
+                    'points': points
+                })
+        
+        return pd.DataFrame(weekly_data)
+        
+    except Exception as e:
+        st.error(f"Error getting weekly data: {e}")
+        # Return empty dataframe
+        return pd.DataFrame()
+
+@st.cache_data(ttl=300, show_spinner=False)
 def get_special_achievements(month_sheet):
     """Get special achievements with proper team detection"""
     try:
@@ -158,61 +213,3 @@ def get_special_achievements(month_sheet):
     except Exception as e:
         st.error(f"Error getting achievements from {month_sheet}: {e}")
         return pd.DataFrame()
-
-@st.cache_data(ttl=60, show_spinner=False)
-def get_weekly_data():
-    """Get weekly breakdown"""
-    try:
-        sheet = get_google_sheet()
-        ws = sheet.worksheet("OFFICE WORKING")
-        
-        # Weekly points from your sheet structure
-        weekly_data = []
-        teams = ['الشمس', 'القمر', 'الزهرة', 'المشتري']
-        
-        # Try to get actual weekly data
-        # Based on your sheet structure, let's try columns I, M, Q, U, Y for weeks
-        week_columns = ['I', 'M', 'Q', 'U', 'Y']
-        week_names = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5']
-        
-        # Team rows in the totals section
-        team_rows = {
-            'الشمس': 48,
-            'القمر': 49, 
-            'الزهرة': 50,
-            'المشتري': 51
-        }
-        
-        for team in teams:
-            row = team_rows.get(team, 48)
-            for i, col in enumerate(week_columns):
-                try:
-                    cell_value = ws.acell(f'{col}{row}').value
-                    if cell_value:
-                        # Try to convert to float
-                        try:
-                            points = float(cell_value)
-                        except:
-                            points = 0
-                    else:
-                        points = 0
-                except:
-                    points = 0
-                
-                weekly_data.append({
-                    'team': team,
-                    'week': week_names[i],
-                    'points': points
-                })
-        
-        return pd.DataFrame(weekly_data)
-        
-    except Exception as e:
-        st.error(f"Error getting weekly data: {e}")
-        # Return empty dataframe instead of sample data
-        return pd.DataFrame()
-        
-    except Exception as e:
-        st.error(f"Error getting student data: {e}")
-        return pd.DataFrame()
-
