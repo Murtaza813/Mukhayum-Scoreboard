@@ -1,3 +1,46 @@
+# DEBUG: Add this at the VERY TOP
+print("=== APP STARTING ===")
+try:
+    # Your existing imports
+    import sys
+    import os
+    import time
+    from datetime import datetime
+    print("✅ Basic imports")
+    
+    PROJECT_ROOT = "/mount/src/mukhayum-scoreboard"
+    if PROJECT_ROOT not in sys.path:
+        sys.path.insert(0, PROJECT_ROOT)
+    print("✅ Path configured")
+    
+    import streamlit as st
+    print("✅ Streamlit imported")
+    
+    import pandas as pd
+    print("✅ pandas imported")
+    
+    import numpy as np
+    print("✅ numpy imported")
+    
+    import plotly.express as px
+    print("✅ plotly imported")
+    
+    from shared.data_loader import get_team_data
+    print("✅ data_loader imported")
+    
+except Exception as e:
+    print(f"❌ IMPORT ERROR: {e}")
+    import traceback
+    traceback.print_exc()
+    # Create a simple error page
+    import streamlit as st
+    st.title("🚨 App Error")
+    st.error(f"Import error: {e}")
+    st.code(traceback.format_exc())
+    st.stop()
+
+print("=== ALL IMPORTS SUCCESSFUL ===")
+
 # ========== IMPORTS FIRST ==========
 import sys
 import os
@@ -643,3 +686,4 @@ st.markdown("""
     <p>© 2024 Quran Live Scoreboard</p>
 </div>
 """, unsafe_allow_html=True)
+
