@@ -6,7 +6,7 @@ import streamlit as st
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 SPREADSHEET_ID = '1-u_eNtf-ApcFdzk9CzNZilRHrLRgxveuxr8j4UQqBmI'
 
-@st.cache_resource(show_spinner=False)
+
 def get_google_sheet():
     """Connect to Google Sheets"""
     credentials = Credentials.from_service_account_info(
@@ -15,7 +15,7 @@ def get_google_sheet():
     )
     return gspread.authorize(credentials).open_by_key(SPREADSHEET_ID)
 
-@st.cache_data(ttl=60, show_spinner=False)
+
 def get_team_data():
     """Get team leaderboard data"""
     try:
@@ -70,7 +70,7 @@ def get_team_data():
             'rank': [1, 2, 3, 4]
         })
 
-@st.cache_data(ttl=120, show_spinner=False)
+
 def get_student_data():
     """Get individual student performance"""
     try:
@@ -100,7 +100,7 @@ def get_student_data():
         st.error(f"Error getting student data: {e}")
         return pd.DataFrame()
 
-@st.cache_data(ttl=300, show_spinner=False)
+
 def get_weekly_data():
     """Get weekly breakdown from Points Table Monthly sheet"""
     try:
@@ -255,7 +255,7 @@ def get_weekly_data():
                 18.0, 15.0, 26.0, 26.0       # Week 5
             ]
         })
-@st.cache_data(ttl=300, show_spinner=False)
+
 def get_special_achievements(month_sheet):
     """Get special achievements from monthly sheets like JAN, FEB, etc."""
     try:
@@ -358,6 +358,7 @@ def get_special_achievements(month_sheet):
         print(f"Error getting achievements from {month_sheet}: {str(e)}")
         # Return empty dataframe instead of error
         return pd.DataFrame()
+
 
 
 
