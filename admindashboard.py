@@ -204,23 +204,29 @@ with tab2:
     weekly_df = get_weekly_data()
     
     if not weekly_df.empty:
-        # Heatmap
-        st.subheader("Weekly Performance Heatmap")
+        # Show summary metrics first
+        st.subheader("📊 Weekly Summary")
         
-        try:
-            pivot_df = weekly_df.pivot(index='team', columns='week', values='points')
-            
-            fig = px.imshow(pivot_df, 
-                          labels=dict(x="Week", y="Team", color="Points"),
-                          aspect="auto",
-                          color_continuous_scale='Viridis')
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
-        except:
-            st.info("Heatmap data not available yet")
+        col1, col2, col3, col4 = st.columns(4)
         
-        # Line chart
-        st.subheader("Weekly Progress")
+        with col1:
+            total_points = weekly_df['points'].sum()
+            st.metric("Total Weekly Points", f"{total_points:,.0f}")
+        
+        with col2:
+            avg_per_week = weekly_df.groupby('week')['points'].sum().mean()
+            st.metric("Avg Points per Week", f"{avg_per_week:,.0f}")
+        
+        with col3:
+            best_week = weekly_df.groupby('week')['points'].sum().idxmax()
+            st.metric("Best Performing Week", best_week)
+        
+        with col4:
+            best_team = weekly_df.groupby('team')['points'].sum().idxmax()
+            st.metric("Highest Weekly Avg", best_team)
+        
+        # Line chart - FIXED
+        st.subheader("📈 Weekly Progress Trend")
         
         # Add team colors
         team_colors = {
@@ -230,20 +236,171 @@ with tab2:
             'المشتري': '#06D6A0'
         }
         
-        weekly_df['color'] = weekly_df['team'].map(team_colors)
+        # Ensure weeks are in correct order
+        week_order = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5']
+        weekly_df['week'] = pd.Categorical(weekly_df['week'], categories=week_order, ordered=True)
         
-        fig2 = px.line(weekly_df, x='week', y='points', color='team',
-                      color_discrete_map=team_colors,
-                      markers=True)
-        fig2.update_layout(height=400)
-        st.plotly_chart(fig2, use_container_width=True)
+        # Sort the data
+        weekly_df = weekly_df.sort_values(['team', 'week'])
         
-        # Data table
-        st.subheader("Weekly Data Table")
-        st.dataframe(weekly_df, use_container_width=True)
+        # Create line chart
+        fig = px.line(weekly_df, x='week', y='points', color='team',
+                     color_discrete_map=team_colors,
+                     markers=True,
+                     line_shape='linear')
+        
+        # Improve chart appearance
+        fig.update_layout(
+            height=500,
+            xaxis_title="Week",
+            yaxis_title="Points",
+            hovermode='x unified',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(size=12),
+            legend=dict(
+                title="Team",
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
+        )
+        
+        # Add grid lines
+        fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
+        fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Heatmap - FIXED
+        st.subheader("🔥 Weekly Performance Heatmap")
+        
+        try:
+            # Create pivot table
+            pivot_df = weekly_df.pivot(index='team', columns='week', values='points')
+            
+            # Reorder columns
+            pivot_df = pivot_df[week_order]
+            
+            # Create heatmap
+            fig2 = px.imshow(pivot_df,
+                           labels=dict(x="Week", y="Team", color="Points"),
+                           aspect="auto",
+                           color_continuous_scale='Viridis',
+                           text_auto=True)
+            
+            fig2.update_layout(
+                height=400,
+                xaxis_title="Week",
+                yaxis_title="Team"
+            )
+            
+            st.plotly_chart(fig2, use_container_width=True)
+        except Exception as e:
+            st.info(f"Heatmap requires complete data. {e}")
+        
+        # Bar chart for weekly totals
+        st.subheader("📊 Total Points by Week")
+        
+        weekly_totals = weekly_df.groupby('week')['points'].sum().reset_index()
+        weekly_totals['week'] = pd.Categorical(weekly_totals['week'], categories=week_order, ordered=True)
+        weekly_totals = weekly_totals.sort_values('week')
+        
+        fig3 = px.bar(weekly_totals, x='week', y='points',
+                     color='points',
+                     color_continuous_scale='Viridis',
+                     text_auto=True)
+        
+        fig3.update_layout(
+            height=400,
+            xaxis_title="Week",
+            yaxis_title="Total Points",
+            showlegend=False
+        )
+        
+        st.plotly_chart(fig3, use_container_width=True)
+        
+        # Data table with team comparisons
+        st.subheader("📋 Weekly Data Table")
+        
+        # Create a more informative table
+        summary_table = weekly_df.pivot_table(
+            index='team',
+            columns='week',
+            values='points',
+            aggfunc='sum',
+            fill_value=0
+        )
+        
+        # Add totals row and column
+        summary_table['Total'] = summary_table.sum(axis=1)
+        summary_table.loc['Week Total'] = summary_table.sum()
+        
+        st.dataframe(
+            summary_table.style.format("{:.0f}").background_gradient(cmap='Blues', axis=0),
+            use_container_width=True
+        )
+        
+        # Download button
+        csv = weekly_df.to_csv(index=False)
+        st.download_button(
+            label="📥 Download Weekly Data",
+            data=csv,
+            file_name="weekly_points.csv",
+            mime="text/csv"
+        )
         
     else:
-        st.info("Weekly data will be available once configured in Google Sheets.")
+        # Show sample data for demonstration
+        st.info("Loading sample weekly data for demonstration...")
+        
+        # Create sample data
+        teams = ['الشمس', 'القمر', 'الزهرة', 'المشتري']
+        week_names = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5']
+        
+        sample_data = []
+        for team in teams:
+            base_points = {
+                'الشمس': 180,
+                'القمر': 160,
+                'الزهرة': 140,
+                'المشتري': 130
+            }
+            
+            for i, week in enumerate(week_names):
+                points = base_points[team] + (i * 20) + np.random.randint(-10, 20)
+                sample_data.append({
+                    'team': team,
+                    'week': week,
+                    'points': points
+                })
+        
+        sample_df = pd.DataFrame(sample_data)
+        
+        # Show the chart with sample data
+        team_colors = {
+            'الشمس': '#FF6B6B',
+            'القمر': '#4ECDC4',
+            'الزهرة': '#FFD166',
+            'المشتري': '#06D6A0'
+        }
+        
+        fig = px.line(sample_df, x='week', y='points', color='team',
+                     color_discrete_map=team_colors,
+                     markers=True,
+                     title="📈 Sample Weekly Progress (Real data will appear here)")
+        
+        fig.update_layout(height=500)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.warning("""
+        **Note:** This shows sample data. To see real weekly data:
+        1. Make sure your Google Sheet has weekly point columns filled
+        2. Check that the `get_weekly_data()` function is reading the correct columns
+        3. Verify that student rows have weekly point values
+        """)
 
 # ========== TAB 3: STUDENT PERFORMANCE ==========
 with tab3:
@@ -514,6 +671,7 @@ st.markdown(f"""
     <p>© 2024 Quran Live Scoreboard</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
