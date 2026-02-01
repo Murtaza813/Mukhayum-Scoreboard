@@ -80,23 +80,24 @@ with st.sidebar:
     st.title("Quran Scoreboard")
     st.markdown("---")
     
-    refresh_rate = st.slider("Refresh rate (seconds)", 10, 300, 30)
+    # Remove refresh rate slider since we're not caching
+    st.info("🔄 **Live Mode Active**")
+    st.caption("Changes in Google Sheets appear immediately")
     
-    if st.button("🔄 Refresh Now"):
-        st.cache_data.clear()
-        st.cache_resource.clear()
+    # Simple refresh button
+    if st.button("🔄 Refresh Page"):
         st.rerun()
     
     st.markdown("---")
     st.markdown("### 📊 Data Status")
     
-    # Test connection by calling get_team_data, not get_google_sheet
     try:
         df = get_team_data()
+        from datetime import datetime
         last_update = datetime.now().strftime("%H:%M:%S")
         if not df.empty:
-            st.success(f"✅ Connected to Google Sheets")
-            st.caption(f"Last update: {last_update}")
+            st.success(f"✅ Live Connection")
+            st.caption(f"Last checked: {last_update}")
             st.caption(f"Teams loaded: {len(df)}")
         else:
             st.warning("⚠️ No team data found")
@@ -721,6 +722,7 @@ st.markdown(f"""
     <p>© 2024 Quran Live Scoreboard</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
