@@ -1,3 +1,12 @@
+# admindashboard.py - COMPLETE WORKING VERSION
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.express as px
+from datetime import datetime
+import sys
+import os
+
 # DEBUG MODE - Add this
 DEBUG = True  # Set to False to hide debug info
 
@@ -14,15 +23,6 @@ if DEBUG:
             st.sidebar.write(f"{row['team']}: {row['points']}")
     except Exception as e:
         st.sidebar.error(f"Debug error: {e}")
-
-# admindashboard.py - COMPLETE WORKING VERSION
-import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.express as px
-from datetime import datetime
-import sys
-import os
 
 # Set page config
 st.set_page_config(
@@ -354,5 +354,6 @@ st.markdown("""
     <p>© 2024 Quran Live Scoreboard</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
