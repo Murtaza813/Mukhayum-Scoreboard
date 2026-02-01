@@ -204,81 +204,85 @@ with tab2:
     weekly_df = get_weekly_data()
     
     if not weekly_df.empty:
-        # Debug: Show EXACT raw data
-        with st.expander("🔍 Debug: View Raw Weekly Data"):
-            st.write("**Data Shape:**", weekly_df.shape)
-            st.write("**Data Types:**")
-            st.write(weekly_df.dtypes)
-            st.write("**Sample Data:**")
-            st.dataframe(weekly_df)
-            
-            # Check for duplicates or same values
-            st.write("**Data Analysis:**")
-            for team in weekly_df['team'].unique():
-                team_data = weekly_df[weekly_df['team'] == team]
-                values = team_data['points'].tolist()
-                unique_values = set(values)
-                
-                if len(unique_values) == 1:
-                    st.error(f"❌ {team}: All 5 weeks have same value = {values[0]}")
-                else:
-                    st.success(f"✅ {team}: Has variation across weeks")
-                    st.write(f"   Values: {values}")
-                    st.write(f"   Range: {min(values)} to {max(values)}")
-                    st.write(f"   Average: {sum(values)/len(values):.1f}")
+        # Data explanation
+        st.info("""
+        **📊 Data Source:** Points Table Monthly sheet
+        **ℹ️ Note:** Week 1 shows total points, Weeks 2-5 show weekly increments
+        """)
         
-        # If all values are the same, show warning and sample data
-        all_same = True
-        for team in weekly_df['team'].unique():
-            team_data = weekly_df[weekly_df['team'] == team]
-            if len(set(team_data['points'])) > 1:
-                all_same = False
-                break
-        
-        if all_same:
-            st.error("""
-            ⚠️ **DATA ISSUE DETECTED**
-            
-            All teams have the same points for every week. This usually means:
-            1. The weekly data is not being read correctly from Google Sheets
-            2. The cells contain formulas instead of actual values
-            3. The data is in different columns than expected
-            
-            **Showing sample data for demonstration:**
-            """)
-            
-            # Show sample data instead
-            weekly_df = create_realistic_weekly_data()
-        
-        # Show summary metrics
-        st.subheader("📊 Weekly Summary")
-        
-        # Calculate metrics
-        total_points = weekly_df['points'].sum()
-        avg_per_week = weekly_df.groupby('week')['points'].sum().mean()
-        weekly_totals = weekly_df.groupby('week')['points'].sum()
-        best_week = weekly_totals.idxmax() if not weekly_totals.empty else "N/A"
-        team_avg = weekly_df.groupby('team')['points'].mean()
-        best_team = team_avg.idxmax() if not team_avg.empty else "N/A"
+        # Quick stats at the top
+        st.subheader("🏆 Weekly Performance Summary")
         
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
+            total_points = weekly_df['points'].sum()
             st.metric("Total Points", f"{total_points:,.0f}")
         
         with col2:
-            st.metric("Avg/Week", f"{avg_per_week:,.0f}")
+            avg_per_week = weekly_df.groupby('week')['points'].sum().mean()
+            st.metric("Average per Week", f"{avg_per_week:,.0f}")
         
         with col3:
+            weekly_totals = weekly_df.groupby('week')['points'].sum()
+            best_week = weekly_totals.idxmax()
             st.metric("Best Week", best_week)
         
         with col4:
-            st.metric("Top Team", best_team)
+            team_totals = weekly_df.groupby('team')['points'].sum()
+            leading_team = team_totals.idxmax()
+            st.metric("Leading Team", leading_team)
         
-        # Line chart
-        st.subheader("📈 Weekly Progress Trend")
+        # Week-by-week breakdown
+        st.subheader("📆 Week-by-Week Breakdown")
         
-        # Add team colors
+        weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5']
+        week_cols = st.columns(5)
+        
+        for i, week in enumerate(weeks):
+            with week_cols[i]:
+                week_data = weekly_df[weekly_df['week'] == week]
+                total = week_data['points'].sum()
+                
+                # Card styling
+                st.markdown(f"""
+                <div style="
+                    background: {'#f8f9fa' if week != 'Week 1' else '#fff3cd'};
+                    border-radius: 10px;
+                    padding: 15px;
+                    text-align: center;
+                    border-left: 5px solid {'#4ECDC4' if week != 'Week 1' else '#FF6B6B'};
+                    margin-bottom: 10px;
+                ">
+                    <h3 style="margin: 0; color: #333;">{week}</h3>
+                    <h2 style="margin: 10px 0; color: {'#1E3A8A' if week != 'Week 1' else '#D97706'};">
+                        {total:,.0f} pts
+                    </h2>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Team details
+                for _, row in week_data.sort_values('points', ascending=False).iterrows():
+                    team_icon = {
+                        'الشمس': '☀️',
+                        'القمر': '🌙', 
+                        'الزهرة': '⭐',
+                        'المشتري': '🪐'
+                    }.get(row['team'], '🏆')
+                    
+                    st.caption(f"{team_icon} {row['team']}: **{row['points']:.0f}** pts")
+        
+        # Main visualization section
+        st.subheader("📈 Visualization Options")
+        
+        # Visualization options
+        viz_option = st.radio(
+            "Choose visualization:",
+            ["All Weeks (Log Scale)", "Weeks 2-5 Only", "Comparison View"],
+            horizontal=True
+        )
+        
+        # Team colors
         team_colors = {
             'الشمس': '#FF6B6B',
             'القمر': '#4ECDC4',
@@ -286,29 +290,78 @@ with tab2:
             'المشتري': '#06D6A0'
         }
         
-        # Ensure weeks are in correct order
+        # Order weeks correctly
         week_order = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5']
         weekly_df['week'] = pd.Categorical(weekly_df['week'], categories=week_order, ordered=True)
         weekly_df = weekly_df.sort_values(['team', 'week'])
         
-        # Create line chart
-        fig = px.line(weekly_df, x='week', y='points', color='team',
-                     color_discrete_map=team_colors,
-                     markers=True,
-                     line_shape='linear')
+        if viz_option == "All Weeks (Log Scale)":
+            # Chart 1: All weeks with log scale
+            fig = px.line(weekly_df, x='week', y='points', color='team',
+                         color_discrete_map=team_colors,
+                         markers=True,
+                         line_shape='linear')
+            
+            fig.update_layout(
+                height=500,
+                xaxis_title="Week",
+                yaxis_title="Points (Log Scale)",
+                yaxis_type="log",
+                hovermode='x unified',
+                plot_bgcolor='white',
+                legend_title="Team"
+            )
+            
+            # Add grid
+            fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#f0f0f0')
+            fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#f0f0f0')
+            
+            st.plotly_chart(fig, use_container_width=True)
+            st.caption("Note: Log scale used to better show both Week 1 (500-600+) and Weeks 2-5 (20-30+)")
+            
+        elif viz_option == "Weeks 2-5 Only":
+            # Chart 2: Weeks 2-5 only
+            weeks_2_5_df = weekly_df[weekly_df['week'].isin(['Week 2', 'Week 3', 'Week 4', 'Week 5'])]
+            
+            fig = px.line(weeks_2_5_df, x='week', y='points', color='team',
+                         color_discrete_map=team_colors,
+                         markers=True,
+                         line_shape='linear')
+            
+            fig.update_layout(
+                height=500,
+                xaxis_title="Week",
+                yaxis_title="Points",
+                hovermode='x unified',
+                plot_bgcolor='white',
+                legend_title="Team"
+            )
+            
+            # Add grid
+            fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#f0f0f0')
+            fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#f0f0f0')
+            
+            st.plotly_chart(fig, use_container_width=True)
+            
+        else:  # Comparison View
+            # Bar chart comparison
+            fig = px.bar(weekly_df, x='week', y='points', color='team',
+                        color_discrete_map=team_colors,
+                        barmode='group')
+            
+            fig.update_layout(
+                height=500,
+                xaxis_title="Week",
+                yaxis_title="Points",
+                hovermode='x unified',
+                plot_bgcolor='white',
+                legend_title="Team"
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
         
-        fig.update_layout(
-            height=500,
-            xaxis_title="Week",
-            yaxis_title="Points",
-            hovermode='x unified',
-            plot_bgcolor='white'
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Data table
-        st.subheader("📋 Weekly Data Table")
+        # Detailed data table
+        st.subheader("📋 Detailed Data Table")
         
         # Create pivot table
         pivot_df = weekly_df.pivot_table(
@@ -318,20 +371,86 @@ with tab2:
             aggfunc='sum'
         )
         
-        # Reorder columns
+        # Ensure correct column order
         pivot_df = pivot_df[week_order]
         
-        # Add totals
-        pivot_df['Total'] = pivot_df.sum(axis=1)
-        pivot_df.loc['Week Total'] = pivot_df.sum()
+        # Add row for weekly totals
+        weekly_totals_row = pivot_df.sum()
+        pivot_df.loc['📊 Week Total'] = weekly_totals_row
         
+        # Add column for team totals
+        pivot_df['📈 Team Total'] = pivot_df[week_order].sum(axis=1)
+        
+        # Display with better formatting
         st.dataframe(
-            pivot_df.style.format("{:.0f}"),
+            pivot_df.style.format("{:.0f}").background_gradient(
+                subset=week_order, 
+                cmap='Blues'
+            ),
+            use_container_width=True,
+            height=400
+        )
+        
+        # Export option
+        csv = weekly_df.to_csv(index=False)
+        st.download_button(
+            label="📥 Download Weekly Data (CSV)",
+            data=csv,
+            file_name="quran_weekly_points.csv",
+            mime="text/csv",
             use_container_width=True
         )
         
+        # Data quality notes
+        with st.expander("ℹ️ Data Notes & Interpretation"):
+            st.markdown("""
+            ### 📝 Understanding the Data:
+            
+            **Week 1 (High Values: 500-600+ points):**
+            - Likely represents **total accumulated points** or **starting totals**
+            - May include points from previous periods
+            - Not directly comparable to weekly increments
+            
+            **Weeks 2-5 (Lower Values: 20-30+ points):**
+            - Represent **weekly increments/achievements**
+            - Show actual weekly performance
+            - Better for tracking week-to-week progress
+            
+            ### 🎯 How to Interpret:
+            1. **For overall ranking**: Look at Week 1 (total points)
+            2. **For weekly progress**: Focus on Weeks 2-5
+            3. **For team momentum**: Check if weekly points are increasing/decreasing
+            
+            ### 🔍 Key Insights from Current Data:
+            - **القمر (Moon)** has highest Week 1 total (693 points)
+            - Weekly performance varies significantly
+            - All teams show activity in all weeks
+            """)
+        
     else:
-        st.error("No weekly data available.")
+        st.warning("No weekly data available. Check your Google Sheets connection.")
+        
+        # Show sample data for demonstration
+        st.subheader("📊 Sample Data for Reference")
+        
+        sample_data = pd.DataFrame({
+            'team': ['الشمس', 'القمر', 'الزهرة', 'المشتري'] * 5,
+            'week': ['Week 1']*4 + ['Week 2']*4 + ['Week 3']*4 + ['Week 4']*4 + ['Week 5']*4,
+            'points': [
+                # Week 1
+                555.5, 693.0, 604.0, 495.0,
+                # Week 2
+                24.0, 25.0, 26.0, 25.0,
+                # Week 3
+                13.0, 33.0, 19.0, 25.0,
+                # Week 4
+                20.0, 27.0, 27.0, 28.0,
+                # Week 5
+                18.0, 15.0, 26.0, 26.0
+            ]
+        })
+        
+        st.dataframe(sample_data, use_container_width=True)
 
 # ========== TAB 3: STUDENT PERFORMANCE ==========
 with tab3:
@@ -602,6 +721,7 @@ st.markdown(f"""
     <p>© 2024 Quran Live Scoreboard</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
