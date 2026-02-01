@@ -80,24 +80,34 @@ with st.sidebar:
     st.title("Quran Scoreboard")
     st.markdown("---")
     
-    # Remove refresh rate slider since we're not caching
-    st.info("🔄 **Live Mode Active**")
-    st.caption("Changes in Google Sheets appear immediately")
+    # Simple refresh option
+    st.markdown("### 🔄 Refresh Control")
     
-    # Simple refresh button
-    if st.button("🔄 Refresh Page"):
+    auto_refresh = st.checkbox("Enable auto-refresh", value=True)
+    
+    if auto_refresh:
+        refresh_rate = st.slider("Refresh every (seconds)", 2, 10, 3)
+        st.info(f"Auto-refreshing every {refresh_rate} seconds")
+        
+        # Auto-refresh the page
+        time.sleep(refresh_rate)
+        st.rerun()
+    else:
+        refresh_rate = None
+    
+    if st.button("🔄 Refresh Now", use_container_width=True):
         st.rerun()
     
     st.markdown("---")
     st.markdown("### 📊 Data Status")
     
+    # Test connection
     try:
         df = get_team_data()
-        from datetime import datetime
         last_update = datetime.now().strftime("%H:%M:%S")
         if not df.empty:
-            st.success(f"✅ Live Connection")
-            st.caption(f"Last checked: {last_update}")
+            st.success(f"✅ Connected to Google Sheets")
+            st.caption(f"Last update: {last_update}")
             st.caption(f"Teams loaded: {len(df)}")
         else:
             st.warning("⚠️ No team data found")
@@ -384,10 +394,7 @@ with tab2:
         
         # Display with better formatting
         st.dataframe(
-            pivot_df.style.format("{:.0f}").background_gradient(
-                subset=week_order, 
-                cmap='Blues'
-            ),
+            pivot_df.style.format("{:.0f}"),
             use_container_width=True,
             height=400
         )
@@ -402,56 +409,8 @@ with tab2:
             use_container_width=True
         )
         
-        # Data quality notes
-        with st.expander("ℹ️ Data Notes & Interpretation"):
-            st.markdown("""
-            ### 📝 Understanding the Data:
-            
-            **Week 1 (High Values: 500-600+ points):**
-            - Likely represents **total accumulated points** or **starting totals**
-            - May include points from previous periods
-            - Not directly comparable to weekly increments
-            
-            **Weeks 2-5 (Lower Values: 20-30+ points):**
-            - Represent **weekly increments/achievements**
-            - Show actual weekly performance
-            - Better for tracking week-to-week progress
-            
-            ### 🎯 How to Interpret:
-            1. **For overall ranking**: Look at Week 1 (total points)
-            2. **For weekly progress**: Focus on Weeks 2-5
-            3. **For team momentum**: Check if weekly points are increasing/decreasing
-            
-            ### 🔍 Key Insights from Current Data:
-            - **القمر (Moon)** has highest Week 1 total (693 points)
-            - Weekly performance varies significantly
-            - All teams show activity in all weeks
-            """)
-        
     else:
-        st.warning("No weekly data available. Check your Google Sheets connection.")
-        
-        # Show sample data for demonstration
-        st.subheader("📊 Sample Data for Reference")
-        
-        sample_data = pd.DataFrame({
-            'team': ['الشمس', 'القمر', 'الزهرة', 'المشتري'] * 5,
-            'week': ['Week 1']*4 + ['Week 2']*4 + ['Week 3']*4 + ['Week 4']*4 + ['Week 5']*4,
-            'points': [
-                # Week 1
-                555.5, 693.0, 604.0, 495.0,
-                # Week 2
-                24.0, 25.0, 26.0, 25.0,
-                # Week 3
-                13.0, 33.0, 19.0, 25.0,
-                # Week 4
-                20.0, 27.0, 27.0, 28.0,
-                # Week 5
-                18.0, 15.0, 26.0, 26.0
-            ]
-        })
-        
-        st.dataframe(sample_data, use_container_width=True)
+        st.warning("No weekly data available.")
 
 # ========== TAB 3: STUDENT PERFORMANCE ==========
 with tab3:
@@ -524,17 +483,6 @@ with tab3:
             for team in valid_teams:
                 count = team_counts.get(team, 0)
                 st.metric(f"**{team}**", count)
-        
-        # Show data quality info
-        if len(filtered_students) != len(student_df):
-            st.info(f"Showing {len(filtered_students)} of {len(student_df)} students (filtered invalid team entries)")
-            
-            # Show what was filtered out
-            invalid_teams = student_df[~student_df['team'].isin(valid_teams)]
-            if len(invalid_teams) > 0:
-                with st.expander("Show students with invalid/missing team data"):
-                    st.write("These students have missing or invalid team names:")
-                    st.dataframe(invalid_teams[['name', 'team']], use_container_width=True)
         
         # Student list by team
         st.subheader("Student List")
@@ -677,34 +625,7 @@ with tab4:
     
     else:
         # Show expected structure from JAN sheet
-        st.info("No achievements loaded yet. The JAN sheet should contain:")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.markdown("**الشمس (Sun)**")
-            st.write("• Burhanuddin Adnan bhai Hamid")
-            st.write("• Shamoil Aliakbar bhai Kokawala")
-            
-        with col2:
-            st.markdown("**القمر (Moon)**")
-            st.write("• Fatema bai Husain bhai Kitabi")
-            st.write("• Zahra Hatim bhai Kaprawala")
-            st.write("• Zahra Sh Huzaifa bhai Godhrawala")
-            st.write("• Hawra Mudreka bhai Mithaiwala")
-            
-        with col3:
-            st.markdown("**الزهرة (Venus)**")
-            st.write("• Abdulqadir bhai Zulfiqarali bhai Carbidewala")
-            st.write("• Insiya M Juzer bhai Shakir")
-            st.write("• Ummehani Juzer bhai Ezzy")
-            
-        with col4:
-            st.markdown("**المشتري (Jupiter)**")
-            st.write("• Zainab bai Saifuddin bhai Jodiawala")
-            st.write("• Batool bai Mustafa bhai Burhanpurwala")
-            st.write("• Husain Imran bhai Rasheed")
-            st.write("• Burhanuddin Abbasali bhai Bharmal")
+        st.info("No achievements loaded yet.")
         
         st.warning("""
         **Make sure:**
@@ -722,17 +643,3 @@ st.markdown("""
     <p>© 2024 Quran Live Scoreboard</p>
 </div>
 """, unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
