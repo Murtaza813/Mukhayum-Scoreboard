@@ -362,117 +362,148 @@ with tab3:
 with tab4:
     st.header("🎯 Special Achievements")
     
-    # Get achievements from all monthly sheets
-    months = ['Jumādā al-Ūlā', 'Jumādā al-Ukhrā', 'May', 'June']
+    # Based on your Excel file, we have monthly sheets like JAN
+    months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 
+              'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+    
     all_achievements = pd.DataFrame()
+    loaded_months = []
     
     for month in months:
-        achievements = get_special_achievements(month)
-        if not achievements.empty:
-            all_achievements = pd.concat([all_achievements, achievements])
+        try:
+            achievements = get_special_achievements(month)
+            if not achievements.empty:
+                achievements['month_display'] = month
+                all_achievements = pd.concat([all_achievements, achievements], ignore_index=True)
+                loaded_months.append(month)
+        except Exception as e:
+            # Sheet doesn't exist or error - skip it
+            continue
     
     if not all_achievements.empty:
-        # Filters
+        st.success(f"✅ Loaded achievements from: {', '.join(loaded_months)}")
+        
+        # Create filters
         col1, col2, col3 = st.columns(3)
+        
         with col1:
-            selected_category = st.selectbox("Achievement Type", 
-                                           ['All'] + list(all_achievements['category'].unique()))
+            # Get unique categories
+            categories = ['All'] + sorted(all_achievements['category'].dropna().unique().tolist())
+            selected_category = st.selectbox("Achievement Type", categories)
+        
         with col2:
-            selected_team = st.selectbox("Team", 
-                                       ['All'] + list(all_achievements['team'].unique()))
+            # Get unique teams
+            teams = ['All'] + sorted(all_achievements['team'].dropna().unique().tolist())
+            selected_team = st.selectbox("Team", teams)
+        
         with col3:
-            selected_month = st.selectbox("Month", 
-                                        ['All'] + list(all_achievements['month'].unique()))
+            # Get unique months
+            month_list = ['All'] + sorted(all_achievements['month_display'].unique().tolist())
+            selected_month = st.selectbox("Month", month_list)
         
         # Apply filters
-        filtered_ach = all_achievements.copy()
-        if selected_category != 'All':
-            filtered_ach = filtered_ach[filtered_ach['category'] == selected_category]
-        if selected_team != 'All':
-            filtered_ach = filtered_ach[filtered_ach['team'] == selected_team]
-        if selected_month != 'All':
-            filtered_ach = filtered_ach[filtered_ach['month'] == selected_month]
+        filtered_df = all_achievements.copy()
         
-        # Display achievements by category
-        if not filtered_ach.empty:
-            for category in filtered_ach['category'].unique():
-                category_data = filtered_ach[filtered_ach['category'] == category]
+        if selected_category != 'All':
+            filtered_df = filtered_df[filtered_df['category'] == selected_category]
+        
+        if selected_team != 'All':
+            filtered_df = filtered_df[filtered_df['team'] == selected_team]
+        
+        if selected_month != 'All':
+            filtered_df = filtered_df[filtered_df['month_display'] == selected_month]
+        
+        # Remove rows with empty or "-" student names
+        filtered_df = filtered_df[~filtered_df['student'].isin(['', '-', None])]
+        
+        if not filtered_df.empty:
+            # Display summary
+            st.subheader("📊 Summary")
+            
+            cols = st.columns(4)
+            with cols[0]:
+                st.metric("Total Achievements", len(filtered_df))
+            with cols[1]:
+                st.metric("Total Points", int(filtered_df['points'].sum()))
+            with cols[2]:
+                st.metric("Unique Students", filtered_df['student'].nunique())
+            with cols[3]:
+                if not filtered_df.empty:
+                    top_team = filtered_df['team'].value_counts().index[0]
+                    st.metric("Top Team", top_team)
+            
+            # Display by category
+            st.subheader("🏅 Achievements by Category")
+            
+            for category in filtered_df['category'].unique():
+                cat_data = filtered_df[filtered_df['category'] == category]
                 
-                st.subheader(f"{category} ({len(category_data)} achievements)")
-                
-                # Create a grid of cards
-                items_per_row = 3
-                items = list(category_data.iterrows())
-                
-                for i in range(0, len(items), items_per_row):
-                    cols = st.columns(items_per_row)
-                    row_items = items[i:i + items_per_row]
-                    
-                    for col_idx, (_, row) in enumerate(row_items):
-                        with cols[col_idx]:
-                            team_color = {
-                                'الشمس': '#FF6B6B',
-                                'القمر': '#4ECDC4',
-                                'الزهرة': '#FFD166',
-                                'المشتري': '#06D6A0',
-                                'Unknown': '#667eea'
-                            }.get(row['team'], '#667eea')
+                with st.expander(f"{category} ({len(cat_data)})"):
+                    if not cat_data.empty:
+                        # Group by team for display
+                        for team in cat_data['team'].unique():
+                            team_data = cat_data[cat_data['team'] == team]
                             
-                            st.markdown(f"""
-                            <div class="metric-card" style="border-left-color: {team_color};">
-                                <h4 style="margin: 0 0 10px 0; font-size: 1rem;">
-                                    {row['student'][:40]}{'...' if len(row['student']) > 40 else ''}
-                                </h4>
-                                <p style="margin: 5px 0; font-size: 0.9rem;">
-                                    <strong style="color: {team_color};">{row['points']} points</strong>
-                                </p>
-                                <p style="margin: 5px 0; font-size: 0.8rem; color: #666;">
-                                    <strong>Team:</strong> {row['team']}<br>
-                                    <strong>Month:</strong> {row['month']}
-                                </p>
-                            </div>
-                            """, unsafe_allow_html=True)
+                            st.markdown(f"**{team}**")
+                            for _, row in team_data.iterrows():
+                                st.write(f"• {row['student']}: {row['points']} points")
+                            st.write("---")
             
-            # Summary statistics
-            st.subheader("📊 Achievements Summary")
-            
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Total Achievements", len(filtered_ach))
-            with col2:
-                st.metric("Unique Students", filtered_ach['student'].nunique())
-            with col3:
-                st.metric("Total Points", filtered_ach['points'].sum())
-            with col4:
-                top_team = filtered_ach['team'].value_counts().index[0] if not filtered_ach.empty else "None"
-                st.metric("Top Team", top_team)
-            
-            # Achievements by team chart
-            if filtered_ach['team'].nunique() > 0:
-                st.subheader("Achievements by Team")
-                
-                team_achievements = filtered_ach.groupby('team').agg({
-                    'points': 'sum',
-                    'student': 'count'
-                }).rename(columns={'student': 'count'}).reset_index()
-                
-                fig = px.bar(team_achievements, x='team', y='count',
-                            color='team',
-                            color_discrete_map={
-                                'الشمس': '#FF6B6B',
-                                'القمر': '#4ECDC4',
-                                'الزهرة': '#FFD166',
-                                'المشتري': '#06D6A0',
-                                'Unknown': '#667eea'
-                            })
-                fig.update_layout(height=300, showlegend=False)
-                st.plotly_chart(fig, use_container_width=True)
-                
+            # Data table view
+            with st.expander("📋 View as Data Table"):
+                st.dataframe(
+                    filtered_df[['student', 'team', 'category', 'points', 'month_display']].rename(
+                        columns={
+                            'student': 'Student',
+                            'team': 'Team',
+                            'category': 'Achievement Type',
+                            'points': 'Points',
+                            'month_display': 'Month'
+                        }
+                    ),
+                    use_container_width=True,
+                    hide_index=True
+                )
         else:
             st.info("No achievements match the selected filters.")
-            
+    
     else:
-        st.info("No special achievements found in monthly sheets.")
+        # Show expected structure from JAN sheet
+        st.info("No achievements loaded yet. The JAN sheet should contain:")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.markdown("**الشمس (Sun)**")
+            st.write("• Burhanuddin Adnan bhai Hamid")
+            st.write("• Shamoil Aliakbar bhai Kokawala")
+            
+        with col2:
+            st.markdown("**القمر (Moon)**")
+            st.write("• Fatema bai Husain bhai Kitabi")
+            st.write("• Zahra Hatim bhai Kaprawala")
+            st.write("• Zahra Sh Huzaifa bhai Godhrawala")
+            st.write("• Hawra Mudreka bhai Mithaiwala")
+            
+        with col3:
+            st.markdown("**الزهرة (Venus)**")
+            st.write("• Abdulqadir bhai Zulfiqarali bhai Carbidewala")
+            st.write("• Insiya M Juzer bhai Shakir")
+            st.write("• Ummehani Juzer bhai Ezzy")
+            
+        with col4:
+            st.markdown("**المشتري (Jupiter)**")
+            st.write("• Zainab bai Saifuddin bhai Jodiawala")
+            st.write("• Batool bai Mustafa bhai Burhanpurwala")
+            st.write("• Husain Imran bhai Rasheed")
+            st.write("• Burhanuddin Abbasali bhai Bharmal")
+        
+        st.warning("""
+        **Make sure:**
+        1. Your Google Sheet has a sheet named "JAN"
+        2. The sheet follows the exact structure from your Excel file
+        3. The sheet has the achievement categories in the right format
+        """)
 
 # ========== FOOTER ==========
 st.markdown("---")
@@ -483,6 +514,7 @@ st.markdown(f"""
     <p>© 2024 Quran Live Scoreboard</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
