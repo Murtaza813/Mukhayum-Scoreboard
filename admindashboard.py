@@ -1,82 +1,96 @@
-import streamlit as st
+# shared/data_loader.py - MINIMAL VERSION
 import pandas as pd
-from datetime import datetime
+import gspread
+from google.oauth2.service_account import Credentials
+import streamlit as st
 
-# Page config FIRST
-st.set_page_config(
-    page_title="Quran Live Scoreboard",
-    page_icon="📖",
-    layout="wide"
-)
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+SPREADSHEET_ID = '1-u_eNtf-ApcFdzk9CzNZilRHrLRgxveuxr8j4UQqBmI'
 
-# Simple CSS
-st.markdown("""
-<style>
-    .main-header { font-size: 2.5rem; color: #1E3A8A; text-align: center; }
-    .team-card { background: white; border-radius: 10px; padding: 20px; margin: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-</style>
-""", unsafe_allow_html=True)
+@st.cache_resource(show_spinner=False)
+def get_google_sheet():
+    """Connect to Google Sheets"""
+    try:
+        credentials = Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"],
+            scopes=SCOPES
+        )
+        client = gspread.authorize(credentials)
+        return client.open_by_key(SPREADSHEET_ID)
+    except Exception as e:
+        st.error(f"Google Sheets connection error: {e}")
+        raise e
 
-# Sidebar
-with st.sidebar:
-    st.title("Quran Scoreboard")
-    st.markdown("---")
-    last_update = datetime.now().strftime("%H:%M:%S")
-    st.success(f"✅ Live - {last_update}")
-    if st.button("🔄 Refresh"):
-        st.rerun()
+def get_team_data():
+    """Get team leaderboard data - SIMPLE VERSION"""
+    try:
+        sheet = get_google_sheet()
+        ws = sheet.worksheet("OFFICE WORKING")
+        
+        # Simple: Read from known positions
+        teams_data = []
+        
+        # Team names and their row numbers
+        team_rows = [
+            ('الشمس', 48),
+            ('القمر', 49),
+            ('الزهرة', 50),
+            ('المشتري', 51)
+        ]
+        
+        for team_name, row_num in team_rows:
+            try:
+                # Read points from column D
+                points_cell = ws.acell(f'D{row_num}').value
+                points = 0
+                
+                if points_cell:
+                    try:
+                        # Clean the value
+                        cleaned = str(points_cell).replace(',', '').strip()
+                        # Remove any non-numeric except decimal
+                        cleaned = ''.join(ch for ch in cleaned if ch.isdigit() or ch == '.')
+                        if cleaned:
+                            points = float(cleaned)
+                    except:
+                        points = 0
+                
+                teams_data.append({
+                    'team': team_name,
+                    'points': points
+                })
+                
+            except Exception as e:
+                print(f"Error reading {team_name}: {e}")
+                teams_data.append({
+                    'team': team_name,
+                    'points': 0
+                })
+        
+        # Create dataframe and add ranks
+        df = pd.DataFrame(teams_data)
+        df = df.sort_values('points', ascending=False)
+        df['rank'] = range(1, len(df) + 1)
+        
+        return df
+        
+    except Exception as e:
+        print(f"Error in get_team_data: {e}")
+        # Return fallback data
+        return pd.DataFrame({
+            'team': ['الشمس', 'القمر', 'الزهرة', 'المشتري'],
+            'points': [0, 0, 0, 0],
+            'rank': [1, 2, 3, 4]
+        })
 
-# Main content
-st.markdown('<h1 class="main-header">📖 Quran Live Scoreboard</h1>', unsafe_allow_html=True)
+def get_student_data():
+    """Placeholder - will implement later"""
+    return pd.DataFrame()
 
-# Create tabs
-tab1, tab2, tab3, tab4 = st.tabs(["🏆 Teams", "📅 Weekly", "👥 Students", "🎯 Achievements"])
+def get_weekly_data():
+    """Placeholder - will implement later"""
+    return pd.DataFrame()
 
-with tab1:
-    st.header("Team Leaderboard")
-    
-    # Sample data
-    teams_data = pd.DataFrame({
-        'Team': ['الشمس (Sun)', 'القمر (Moon)', 'الزهرة (Venus)', 'المشتري (Jupiter)'],
-        'Points': [1500, 1200, 900, 800],
-        'Rank': [1, 2, 3, 4]
-    })
-    
-    # Display as cards
-    cols = st.columns(4)
-    for idx, (_, team) in enumerate(teams_data.iterrows()):
-        with cols[idx]:
-            colors = ['#FF6B6B', '#4ECDC4', '#FFD166', '#06D6A0']
-            icons = ['☀️', '🌙', '⭐', '🪐']
-            
-            st.markdown(f"""
-            <div class="team-card" style="border-top: 5px solid {colors[idx]};">
-                <div style="font-size: 2rem;">{icons[idx]}</div>
-                <h3 style="margin: 10px 0;">{team['Team'].split(' ')[0]}</h3>
-                <h1 style="margin: 10px 0; color: {colors[idx]};">{team['Points']:,}</h1>
-                <p style="margin: 0;">Rank #{team['Rank']}</p>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    st.dataframe(teams_data, use_container_width=True)
-
-with tab2:
-    st.header("Weekly Breakdown")
-    st.info("Weekly data loading soon...")
-
-with tab3:
-    st.header("Student Performance")
-    st.info("Student data loading soon...")
-
-with tab4:
-    st.header("Special Achievements")
-    st.info("Achievements data loading soon...")
-
-# Footer
-st.markdown("---")
-st.markdown("""
-<div style="text-align: center; color: #666;">
-    <p>📊 Live Scoreboard | ⚡ Streamlit | 🎯 Real-time Tracking</p>
-    <p>© 2024 Quran Live Scoreboard</p>
-</div>
-""", unsafe_allow_html=True)
+def get_special_achievements(month_sheet):
+    """Placeholder - will implement later"""
+    return pd.DataFrame()
