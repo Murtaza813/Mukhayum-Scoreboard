@@ -153,64 +153,106 @@ def get_weekly_data():
 
 @st.cache_data(ttl=300, show_spinner=False)
 def get_special_achievements(month_sheet):
-    """Get special achievements with proper team detection"""
+    """Get special achievements from monthly sheets like JAN, FEB, etc."""
     try:
         sheet = get_google_sheet()
         ws = sheet.worksheet(month_sheet)
         
-        data = ws.get_all_values()
+        # Get all data from the sheet
+        all_data = ws.get_all_values()
         achievements = []
         
         current_category = ""
-        for row in data:
-            if not row:
+        current_team = ""
+        
+        # Team columns mapping (based on your JAN sheet structure)
+        # Column positions: 0=SUN(الشمس), 2=MOON(القمر), 4=VENUS(الزهرة), 6=JUPITER(المشتري)
+        team_columns = {
+            0: "الشمس",  # SUN column
+            2: "القمر",  # MOON column
+            4: "الزهرة",  # VENUS column
+            6: "المشتري"   # JUPITER column
+        }
+        
+        i = 0
+        while i < len(all_data):
+            row = all_data[i]
+            
+            if not any(row):  # Skip empty rows
+                i += 1
                 continue
             
             # Check for category headers
-            if "Nihāʾī Ikhtibār" in row[0]:
-                current_category = "Final Exam"
-            elif "Sanawāt Ikhtibār" in row[0]:
-                current_category = "Sanawat Exam"
-            elif "Sub Sanawāt Ikhtibār" in row[0]:
-                current_category = "Sub-Sanawat Exam"
-            elif "Monthly Jadīd Target Achievers" in row[0]:
-                current_category = "Monthly Target Achievers"
-            elif "Student of the Week Achievers" in row[0]:
-                current_category = "Student of the Week"
+            row_text = " ".join(str(cell) for cell in row)
             
-            # Check for student rows (has points in second column)
-            if len(row) >= 2 and row[1] and row[1].isdigit():
-                student_name = row[0]
-                
-                # Determine team from student name based on your patterns
-                team = "Unknown"
-                
-                # Check team indicators in the name
-                team_keywords = {
-                    'الشمس': ['Anwar', 'أنور'],
-                    'القمر': ['Aqmar', 'أقمر'],
-                    'الزهرة': ['Azhar', 'أزهر'],
-                    'المشتري': ['Juyushi', 'جيوشي']
-                }
-                
-                for team_name, keywords in team_keywords.items():
-                    for keyword in keywords:
-                        if keyword in student_name:
-                            team = team_name
-                            break
-                    if team != "Unknown":
-                        break
-                
-                achievements.append({
-                    'student': student_name,
-                    'points': int(row[1]),
-                    'category': current_category,
-                    'team': team,
-                    'month': month_sheet
-                })
+            if "Nihāʾī Ikhtibār" in row_text:
+                current_category = "Final Exam (Nihāʾī Ikhtibār)"
+                i += 2  # Skip header and column headers
+                continue
+            elif "Sub Sanawāt Ikhtibār" in row_text:
+                current_category = "Sub-Sanawat Exam (Sub Sanawāt Ikhtibār)"
+                i += 2  # Skip header and column headers
+                continue
+            elif "Marhala Ikhtibār" in row_text:
+                current_category = "Stage Exam (Marhala Ikhtibār)"
+                i += 2  # Skip header and column headers
+                continue
+            elif "Monthly Jadīd Target Achievers" in row_text:
+                current_category = "Monthly Target Achievers (Monthly Jadīd)"
+                i += 2  # Skip header and column headers
+                continue
+            elif "Student of the Week Achievers" in row_text:
+                current_category = "Student of the Week (SOTW)"
+                i += 2  # Skip header and column headers
+                continue
+            elif "Other Activities" in row_text or "Other Activities / Points" in row_text:
+                current_category = "Other Activities"
+                i += 2  # Skip header and column headers
+                continue
+            elif "Total points" in row_text:
+                # End of achievements section
+                break
+            
+            # Check for student/activity rows
+            # In your structure, each team has 2 columns: Student and Points
+            for col_idx, team_name in team_columns.items():
+                if col_idx < len(row):
+                    student = str(row[col_idx]).strip()
+                    points_cell = str(row[col_idx + 1]).strip() if col_idx + 1 < len(row) else ""
+                    
+                    # Check if this is a valid entry (not empty and not a dash)
+                    if student and student != "-" and student != "":
+                        # Try to parse points
+                        points = 0
+                        try:
+                            # Remove any non-numeric characters except decimal point
+                            points_str = "".join(ch for ch in points_cell if ch.isdigit() or ch == '.')
+                            if points_str:
+                                points = float(points_str)
+                        except:
+                            points = 0
+                        
+                        # Only add if we have points or it's a valid student entry
+                        if points > 0 or (student and student != "-"):
+                            achievements.append({
+                                'student': student,
+                                'points': points,
+                                'category': current_category,
+                                'team': team_name,
+                                'month': month_sheet
+                            })
+            
+            i += 1
+        
+        # Debug: Print what was found
+        if achievements:
+            print(f"Found {len(achievements)} achievements in {month_sheet}")
         
         return pd.DataFrame(achievements)
+        
     except Exception as e:
-        st.error(f"Error getting achievements from {month_sheet}: {e}")
+        print(f"Error getting achievements from {month_sheet}: {str(e)}")
+        # Return empty dataframe instead of error
         return pd.DataFrame()
+
 
