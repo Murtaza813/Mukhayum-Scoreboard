@@ -1,3 +1,20 @@
+# DEBUG MODE - Add this
+DEBUG = True  # Set to False to hide debug info
+
+if DEBUG:
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🐛 Debug Info")
+    
+    try:
+        from shared.data_loader import get_team_data
+        df = get_team_data()
+        st.sidebar.write(f"Teams loaded: {len(df)}")
+        st.sidebar.write("Team points:")
+        for _, row in df.iterrows():
+            st.sidebar.write(f"{row['team']}: {row['points']}")
+    except Exception as e:
+        st.sidebar.error(f"Debug error: {e}")
+
 # admindashboard.py - COMPLETE WORKING VERSION
 import streamlit as st
 import pandas as pd
@@ -337,4 +354,5 @@ st.markdown("""
     <p>© 2024 Quran Live Scoreboard</p>
 </div>
 """, unsafe_allow_html=True)
+
 
