@@ -4,7 +4,7 @@ from google.oauth2.service_account import Credentials
 import streamlit as st
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-SPREADSHEET_ID = '12FWohzX2yJXxvC4xTu3-NSTzLgJogQOmp2LtDLDaw7I'
+SPREADSHEET_ID = '1-u_eNtf-ApcFdzk9CzNZilRHrLRgxveuxr8j4UQqBmI'
 
 @st.cache_resource(show_spinner=False)
 def get_google_sheet():
@@ -213,3 +213,4 @@ def get_special_achievements(month_sheet):
     except Exception as e:
         st.error(f"Error getting achievements from {month_sheet}: {e}")
         return pd.DataFrame()
+
