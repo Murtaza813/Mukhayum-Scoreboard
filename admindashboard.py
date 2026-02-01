@@ -204,29 +204,60 @@ with tab2:
     weekly_df = get_weekly_data()
     
     if not weekly_df.empty:
-        # Show summary metrics first
+        # Debug: Show what data we're getting
+        with st.expander("🔍 Debug: View Raw Weekly Data"):
+            st.write("Data Shape:", weekly_df.shape)
+            st.dataframe(weekly_df)
+            
+            # Check if all weeks have same values
+            for team in weekly_df['team'].unique():
+                team_data = weekly_df[weekly_df['team'] == team]
+                values = team_data['points'].tolist()
+                if len(set(values)) == 1:
+                    st.warning(f"⚠️ {team}: All weeks have same value ({values[0]})")
+        
+        # Show summary metrics
         st.subheader("📊 Weekly Summary")
+        
+        # Calculate actual metrics
+        total_points = weekly_df['points'].sum()
+        avg_per_week = weekly_df.groupby('week')['points'].sum().mean()
+        
+        # Find best week
+        weekly_totals = weekly_df.groupby('week')['points'].sum()
+        best_week = weekly_totals.idxmax() if not weekly_totals.empty else "N/A"
+        
+        # Find team with highest average
+        team_avg = weekly_df.groupby('team')['points'].mean()
+        best_team = team_avg.idxmax() if not team_avg.empty else "N/A"
         
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            total_points = weekly_df['points'].sum()
             st.metric("Total Weekly Points", f"{total_points:,.0f}")
         
         with col2:
-            avg_per_week = weekly_df.groupby('week')['points'].sum().mean()
             st.metric("Avg Points per Week", f"{avg_per_week:,.0f}")
         
         with col3:
-            best_week = weekly_df.groupby('week')['points'].sum().idxmax()
             st.metric("Best Performing Week", best_week)
         
         with col4:
-            best_team = weekly_df.groupby('team')['points'].sum().idxmax()
             st.metric("Highest Weekly Avg", best_team)
         
-        # Line chart - FIXED
+        # Line chart - with better data validation
         st.subheader("📈 Weekly Progress Trend")
+        
+        # Check if we have varying data
+        has_variation = False
+        for team in weekly_df['team'].unique():
+            team_points = weekly_df[weekly_df['team'] == team]['points']
+            if len(set(team_points)) > 1:
+                has_variation = True
+                break
+        
+        if not has_variation:
+            st.warning("⚠️ All weeks show the same values for each team. This suggests the data might not be reading correctly.")
         
         # Add team colors
         team_colors = {
@@ -247,7 +278,8 @@ with tab2:
         fig = px.line(weekly_df, x='week', y='points', color='team',
                      color_discrete_map=team_colors,
                      markers=True,
-                     line_shape='linear')
+                     line_shape='linear',
+                     title="Team Performance Over Weeks")
         
         # Improve chart appearance
         fig.update_layout(
@@ -274,7 +306,7 @@ with tab2:
         
         st.plotly_chart(fig, use_container_width=True)
         
-        # Heatmap - FIXED
+        # Heatmap
         st.subheader("🔥 Weekly Performance Heatmap")
         
         try:
@@ -299,33 +331,12 @@ with tab2:
             
             st.plotly_chart(fig2, use_container_width=True)
         except Exception as e:
-            st.info(f"Heatmap requires complete data. {e}")
+            st.info(f"Heatmap requires complete data.")
         
-        # Bar chart for weekly totals
-        st.subheader("📊 Total Points by Week")
-        
-        weekly_totals = weekly_df.groupby('week')['points'].sum().reset_index()
-        weekly_totals['week'] = pd.Categorical(weekly_totals['week'], categories=week_order, ordered=True)
-        weekly_totals = weekly_totals.sort_values('week')
-        
-        fig3 = px.bar(weekly_totals, x='week', y='points',
-                     color='points',
-                     color_continuous_scale='Viridis',
-                     text_auto=True)
-        
-        fig3.update_layout(
-            height=400,
-            xaxis_title="Week",
-            yaxis_title="Total Points",
-            showlegend=False
-        )
-        
-        st.plotly_chart(fig3, use_container_width=True)
-        
-        # Data table with team comparisons
+        # Data table
         st.subheader("📋 Weekly Data Table")
         
-        # Create a more informative table
+        # Create pivot table
         summary_table = weekly_df.pivot_table(
             index='team',
             columns='week',
@@ -334,72 +345,35 @@ with tab2:
             fill_value=0
         )
         
-        # Add totals row and column
+        # Ensure correct week order
+        summary_table = summary_table[week_order]
+        
+        # Add totals
         summary_table['Total'] = summary_table.sum(axis=1)
         summary_table.loc['Week Total'] = summary_table.sum()
         
+        # Display the table
         st.dataframe(
-            summary_table.style.format("{:.0f}").background_gradient(cmap='Blues', axis=0),
+            summary_table.style.format("{:.0f}"),
             use_container_width=True
         )
         
-        # Download button
-        csv = weekly_df.to_csv(index=False)
-        st.download_button(
-            label="📥 Download Weekly Data",
-            data=csv,
-            file_name="weekly_points.csv",
-            mime="text/csv"
-        )
-        
     else:
-        # Show sample data for demonstration
-        st.info("Loading sample weekly data for demonstration...")
+        st.error("❌ No weekly data found. Check your Google Sheet structure.")
         
-        # Create sample data
-        teams = ['الشمس', 'القمر', 'الزهرة', 'المشتري']
-        week_names = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5']
+        # Show help for troubleshooting
+        st.markdown("""
+        ### 🔧 Troubleshooting Weekly Data
         
-        sample_data = []
-        for team in teams:
-            base_points = {
-                'الشمس': 180,
-                'القمر': 160,
-                'الزهرة': 140,
-                'المشتري': 130
-            }
-            
-            for i, week in enumerate(week_names):
-                points = base_points[team] + (i * 20) + np.random.randint(-10, 20)
-                sample_data.append({
-                    'team': team,
-                    'week': week,
-                    'points': points
-                })
+        **Possible Issues:**
+        1. **Wrong column references**: The weekly data might be in different columns
+        2. **Formula cells**: Weekly totals might be formulas that need to be evaluated
+        3. **Different sheet structure**: Your Google Sheet might have a different layout
         
-        sample_df = pd.DataFrame(sample_data)
-        
-        # Show the chart with sample data
-        team_colors = {
-            'الشمس': '#FF6B6B',
-            'القمر': '#4ECDC4',
-            'الزهرة': '#FFD166',
-            'المشتري': '#06D6A0'
-        }
-        
-        fig = px.line(sample_df, x='week', y='points', color='team',
-                     color_discrete_map=team_colors,
-                     markers=True,
-                     title="📈 Sample Weekly Progress (Real data will appear here)")
-        
-        fig.update_layout(height=500)
-        st.plotly_chart(fig, use_container_width=True)
-        
-        st.warning("""
-        **Note:** This shows sample data. To see real weekly data:
-        1. Make sure your Google Sheet has weekly point columns filled
-        2. Check that the `get_weekly_data()` function is reading the correct columns
-        3. Verify that student rows have weekly point values
+        **Quick Fixes to Try:**
+        - Check if weekly totals are in rows 48-51 of the OFFICE WORKING sheet
+        - Verify columns I, M, Q, U, Y contain weekly point totals
+        - Make sure cells contain actual numbers, not just formulas
         """)
 
 # ========== TAB 3: STUDENT PERFORMANCE ==========
@@ -671,6 +645,7 @@ st.markdown(f"""
     <p>© 2024 Quran Live Scoreboard</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
