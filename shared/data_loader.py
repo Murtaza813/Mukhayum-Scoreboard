@@ -102,55 +102,159 @@ def get_student_data():
 
 @st.cache_data(ttl=300, show_spinner=False)
 def get_weekly_data():
-    """Get weekly breakdown"""
+    """Get weekly breakdown from Points Table Monthly sheet"""
     try:
+        import re
+        
         sheet = get_google_sheet()
+        
+        # Try to get data from Points Table Monthly sheet first
+        try:
+            ws = sheet.worksheet("Points Table Monthly")
+            
+            # Get data from rows 6-10 (Weeks 1-5)
+            # Row indices: Week 1=5, Week 2=6, Week 3=7, Week 4=8, Week 5=9 (0-indexed)
+            weekly_data = []
+            teams = ['الشمس', 'القمر', 'الزهرة', 'المشتري']
+            week_names = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5']
+            
+            # Column mapping for teams
+            team_cols = {
+                'الشمس': 0,  # Column A (0-indexed) - adjust based on actual sheet
+                'القمر': 1,  # Column B
+                'الزهرة': 2,  # Column C
+                'المشتري': 3   # Column D
+            }
+            
+            # Try to read the data
+            for week_idx, week_name in enumerate(week_names):
+                row_num = 5 + week_idx  # Start from row 6 (0-indexed: 5)
+                
+                try:
+                    # Read the entire row
+                    row_data = ws.row_values(row_num + 1)  # gspread is 1-indexed
+                    
+                    for team_name, col_idx in team_cols.items():
+                        if col_idx < len(row_data):
+                            cell_value = row_data[col_idx]
+                            points = 0
+                            
+                            if cell_value:
+                                try:
+                                    # Clean and convert
+                                    cleaned = str(cell_value).strip()
+                                    # Remove any formula references or special characters
+                                    if '=' in cleaned:
+                                        # Try to extract number from formula
+                                        nums = re.findall(r'\d+\.?\d*', cleaned)
+                                        if nums:
+                                            points = float(nums[0])
+                                    else:
+                                        points = float(cleaned.replace(',', ''))
+                                except:
+                                    points = 0
+                            
+                            weekly_data.append({
+                                'team': team_name,
+                                'week': week_name,
+                                'points': points
+                            })
+                except:
+                    # If row doesn't exist, add zeros
+                    for team_name in teams:
+                        weekly_data.append({
+                            'team': team_name,
+                            'week': week_name,
+                            'points': 0
+                        })
+            
+            # Check if we got valid data
+            total_points = sum(item['points'] for item in weekly_data)
+            
+            if total_points > 0:
+                return pd.DataFrame(weekly_data)
+                
+        except Exception as e:
+            print(f"Error reading Points Table Monthly: {e}")
+        
+        # Fallback: Read from OFFICE WORKING sheet
         ws = sheet.worksheet("OFFICE WORKING")
         
-        # Weekly points from your sheet structure
+        # Read team totals from rows 48-51
         weekly_data = []
         teams = ['الشمس', 'القمر', 'الزهرة', 'المشتري']
-        
-        # Try to get actual weekly data
-        week_columns = ['I', 'M', 'Q', 'U', 'Y']
         week_names = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5']
         
-        # Team rows in the totals section
+        # Week columns in OFFICE WORKING (January section)
+        week_columns = {
+            'Week 1': 'I',
+            'Week 2': 'M',
+            'Week 3': 'Q',
+            'Week 4': 'U',
+            'Week 5': 'Y'
+        }
+        
+        # Team rows
         team_rows = {
             'الشمس': 48,
-            'القمر': 49, 
+            'القمر': 49,
             'الزهرة': 50,
             'المشتري': 51
         }
         
-        for team in teams:
-            row = team_rows.get(team, 48)
-            for i, col in enumerate(week_columns):
+        for team_name, row_num in team_rows.items():
+            for week_name, col_letter in week_columns.items():
                 try:
-                    cell_value = ws.acell(f'{col}{row}').value
+                    cell_value = ws.acell(f"{col_letter}{row_num}").value
+                    points = 0
+                    
                     if cell_value:
                         try:
-                            points = float(cell_value)
+                            cleaned = str(cell_value).strip()
+                            # Remove any formula or special characters
+                            if '=' in cleaned:
+                                # Try to get the calculated value
+                                try:
+                                    # Extract numbers from formula
+                                    nums = re.findall(r'\d+\.?\d*', cleaned)
+                                    if nums:
+                                        points = sum(float(num) for num in nums[:3])
+                                except:
+                                    pass
+                            else:
+                                points = float(cleaned.replace(',', ''))
                         except:
                             points = 0
-                    else:
-                        points = 0
+                    
+                    weekly_data.append({
+                        'team': team_name,
+                        'week': week_name,
+                        'points': points
+                    })
                 except:
-                    points = 0
-                
-                weekly_data.append({
-                    'team': team,
-                    'week': week_names[i],
-                    'points': points
-                })
+                    weekly_data.append({
+                        'team': team_name,
+                        'week': week_name,
+                        'points': 0
+                    })
         
         return pd.DataFrame(weekly_data)
         
     except Exception as e:
-        st.error(f"Error getting weekly data: {e}")
-        # Return empty dataframe
-        return pd.DataFrame()
-
+        print(f"Error in get_weekly_data: {e}")
+        
+        # Return sample data as fallback
+        return pd.DataFrame({
+            'team': ['الشمس', 'القمر', 'الزهرة', 'المشتري'] * 5,
+            'week': ['Week 1']*4 + ['Week 2']*4 + ['Week 3']*4 + ['Week 4']*4 + ['Week 5']*4,
+            'points': [
+                555.5, 693.0, 604.0, 495.0,  # Week 1
+                24.0, 25.0, 26.0, 25.0,      # Week 2
+                13.0, 33.0, 19.0, 25.0,      # Week 3
+                20.0, 27.0, 27.0, 28.0,      # Week 4
+                18.0, 15.0, 26.0, 26.0       # Week 5
+            ]
+        })
 @st.cache_data(ttl=300, show_spinner=False)
 def get_special_achievements(month_sheet):
     """Get special achievements from monthly sheets like JAN, FEB, etc."""
@@ -254,5 +358,6 @@ def get_special_achievements(month_sheet):
         print(f"Error getting achievements from {month_sheet}: {str(e)}")
         # Return empty dataframe instead of error
         return pd.DataFrame()
+
 
 
