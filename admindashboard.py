@@ -715,13 +715,14 @@ with tab4:
 
 # ========== FOOTER ==========
 st.markdown("---")
-st.markdown(f"""
+st.markdown("""
 <div style="text-align: center; color: #666; padding: 20px;">
-    <p>🔄 Updates automatically every {refresh_rate} seconds</p>
+    <p>🔄 <strong>Live Mode Active</strong> - Changes in Google Sheets appear immediately</p>
     <p>📊 Data source: Google Sheets | ⚡ Powered by Streamlit | 🎯 Real-time Competition Tracking</p>
     <p>© 2024 Quran Live Scoreboard</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
