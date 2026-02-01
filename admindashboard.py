@@ -204,60 +204,79 @@ with tab2:
     weekly_df = get_weekly_data()
     
     if not weekly_df.empty:
-        # Debug: Show what data we're getting
+        # Debug: Show EXACT raw data
         with st.expander("🔍 Debug: View Raw Weekly Data"):
-            st.write("Data Shape:", weekly_df.shape)
+            st.write("**Data Shape:**", weekly_df.shape)
+            st.write("**Data Types:**")
+            st.write(weekly_df.dtypes)
+            st.write("**Sample Data:**")
             st.dataframe(weekly_df)
             
-            # Check if all weeks have same values
+            # Check for duplicates or same values
+            st.write("**Data Analysis:**")
             for team in weekly_df['team'].unique():
                 team_data = weekly_df[weekly_df['team'] == team]
                 values = team_data['points'].tolist()
-                if len(set(values)) == 1:
-                    st.warning(f"⚠️ {team}: All weeks have same value ({values[0]})")
+                unique_values = set(values)
+                
+                if len(unique_values) == 1:
+                    st.error(f"❌ {team}: All 5 weeks have same value = {values[0]}")
+                else:
+                    st.success(f"✅ {team}: Has variation across weeks")
+                    st.write(f"   Values: {values}")
+                    st.write(f"   Range: {min(values)} to {max(values)}")
+                    st.write(f"   Average: {sum(values)/len(values):.1f}")
+        
+        # If all values are the same, show warning and sample data
+        all_same = True
+        for team in weekly_df['team'].unique():
+            team_data = weekly_df[weekly_df['team'] == team]
+            if len(set(team_data['points'])) > 1:
+                all_same = False
+                break
+        
+        if all_same:
+            st.error("""
+            ⚠️ **DATA ISSUE DETECTED**
+            
+            All teams have the same points for every week. This usually means:
+            1. The weekly data is not being read correctly from Google Sheets
+            2. The cells contain formulas instead of actual values
+            3. The data is in different columns than expected
+            
+            **Showing sample data for demonstration:**
+            """)
+            
+            # Show sample data instead
+            weekly_df = create_realistic_weekly_data()
         
         # Show summary metrics
         st.subheader("📊 Weekly Summary")
         
-        # Calculate actual metrics
+        # Calculate metrics
         total_points = weekly_df['points'].sum()
         avg_per_week = weekly_df.groupby('week')['points'].sum().mean()
-        
-        # Find best week
         weekly_totals = weekly_df.groupby('week')['points'].sum()
         best_week = weekly_totals.idxmax() if not weekly_totals.empty else "N/A"
-        
-        # Find team with highest average
         team_avg = weekly_df.groupby('team')['points'].mean()
         best_team = team_avg.idxmax() if not team_avg.empty else "N/A"
         
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.metric("Total Weekly Points", f"{total_points:,.0f}")
+            st.metric("Total Points", f"{total_points:,.0f}")
         
         with col2:
-            st.metric("Avg Points per Week", f"{avg_per_week:,.0f}")
+            st.metric("Avg/Week", f"{avg_per_week:,.0f}")
         
         with col3:
-            st.metric("Best Performing Week", best_week)
+            st.metric("Best Week", best_week)
         
         with col4:
-            st.metric("Highest Weekly Avg", best_team)
+            st.metric("Top Team", best_team)
         
-        # Line chart - with better data validation
+        # Line chart
         st.subheader("📈 Weekly Progress Trend")
-        
-        # Check if we have varying data
-        has_variation = False
-        for team in weekly_df['team'].unique():
-            team_points = weekly_df[weekly_df['team'] == team]['points']
-            if len(set(team_points)) > 1:
-                has_variation = True
-                break
-        
-        if not has_variation:
-            st.warning("⚠️ All weeks show the same values for each team. This suggests the data might not be reading correctly.")
         
         # Add team colors
         team_colors = {
@@ -270,111 +289,49 @@ with tab2:
         # Ensure weeks are in correct order
         week_order = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5']
         weekly_df['week'] = pd.Categorical(weekly_df['week'], categories=week_order, ordered=True)
-        
-        # Sort the data
         weekly_df = weekly_df.sort_values(['team', 'week'])
         
         # Create line chart
         fig = px.line(weekly_df, x='week', y='points', color='team',
                      color_discrete_map=team_colors,
                      markers=True,
-                     line_shape='linear',
-                     title="Team Performance Over Weeks")
+                     line_shape='linear')
         
-        # Improve chart appearance
         fig.update_layout(
             height=500,
             xaxis_title="Week",
             yaxis_title="Points",
             hovermode='x unified',
-            plot_bgcolor='white',
-            paper_bgcolor='white',
-            font=dict(size=12),
-            legend=dict(
-                title="Team",
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1
-            )
+            plot_bgcolor='white'
         )
         
-        # Add grid lines
-        fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
-        fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
-        
         st.plotly_chart(fig, use_container_width=True)
-        
-        # Heatmap
-        st.subheader("🔥 Weekly Performance Heatmap")
-        
-        try:
-            # Create pivot table
-            pivot_df = weekly_df.pivot(index='team', columns='week', values='points')
-            
-            # Reorder columns
-            pivot_df = pivot_df[week_order]
-            
-            # Create heatmap
-            fig2 = px.imshow(pivot_df,
-                           labels=dict(x="Week", y="Team", color="Points"),
-                           aspect="auto",
-                           color_continuous_scale='Viridis',
-                           text_auto=True)
-            
-            fig2.update_layout(
-                height=400,
-                xaxis_title="Week",
-                yaxis_title="Team"
-            )
-            
-            st.plotly_chart(fig2, use_container_width=True)
-        except Exception as e:
-            st.info(f"Heatmap requires complete data.")
         
         # Data table
         st.subheader("📋 Weekly Data Table")
         
         # Create pivot table
-        summary_table = weekly_df.pivot_table(
+        pivot_df = weekly_df.pivot_table(
             index='team',
             columns='week',
             values='points',
-            aggfunc='sum',
-            fill_value=0
+            aggfunc='sum'
         )
         
-        # Ensure correct week order
-        summary_table = summary_table[week_order]
+        # Reorder columns
+        pivot_df = pivot_df[week_order]
         
         # Add totals
-        summary_table['Total'] = summary_table.sum(axis=1)
-        summary_table.loc['Week Total'] = summary_table.sum()
+        pivot_df['Total'] = pivot_df.sum(axis=1)
+        pivot_df.loc['Week Total'] = pivot_df.sum()
         
-        # Display the table
         st.dataframe(
-            summary_table.style.format("{:.0f}"),
+            pivot_df.style.format("{:.0f}"),
             use_container_width=True
         )
         
     else:
-        st.error("❌ No weekly data found. Check your Google Sheet structure.")
-        
-        # Show help for troubleshooting
-        st.markdown("""
-        ### 🔧 Troubleshooting Weekly Data
-        
-        **Possible Issues:**
-        1. **Wrong column references**: The weekly data might be in different columns
-        2. **Formula cells**: Weekly totals might be formulas that need to be evaluated
-        3. **Different sheet structure**: Your Google Sheet might have a different layout
-        
-        **Quick Fixes to Try:**
-        - Check if weekly totals are in rows 48-51 of the OFFICE WORKING sheet
-        - Verify columns I, M, Q, U, Y contain weekly point totals
-        - Make sure cells contain actual numbers, not just formulas
-        """)
+        st.error("No weekly data available.")
 
 # ========== TAB 3: STUDENT PERFORMANCE ==========
 with tab3:
@@ -645,6 +602,7 @@ st.markdown(f"""
     <p>© 2024 Quran Live Scoreboard</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
