@@ -59,34 +59,28 @@ with st.sidebar:
     st.title("Quran Scoreboard")
     st.markdown("---")
     
-    # Auto-refresh option
-    auto_refresh = st.checkbox("🔄 Enable Auto-Refresh", value=True)
+    # ONLY MANUAL REFRESH - NO AUTO-REFRESH
+    st.info("📊 **Manual Refresh Only**")
+    st.write("Click below to update data")
     
-    if auto_refresh:
-        refresh_rate = st.slider("Refresh every (seconds)", 2, 10, 3)
-        st.info(f"Auto-refreshing every {refresh_rate} seconds")
-        import time
-        time.sleep(refresh_rate)
-        st.rerun()
-    
-    if st.button("🔄 Manual Refresh"):
+    if st.button("🔄 **Refresh Data Now**", type="primary", use_container_width=True):
         st.rerun()
     
     st.markdown("---")
-    st.markdown("### 📊 Connection Status")
+    st.markdown("### 📊 Data Status")
     
     try:
         team_df = get_team_data()
         last_update = datetime.now().strftime("%H:%M:%S")
         if not team_df.empty:
-            st.success("✅ Live Data Connected")
-            st.caption(f"Last update: {last_update}")
-            st.caption(f"Teams: {len(team_df)}")
+            st.success("✅ Connected to Google Sheets")
+            st.caption(f"Last refresh: {last_update}")
+            st.caption(f"Teams loaded: {len(team_df)}")
+            st.caption("**Click Refresh button above** to update")
         else:
             st.warning("⚠️ No team data found")
     except Exception as e:
-        st.error(f"❌ Connection error: {str(e)[:50]}")
-
+        st.error(f"❌ Connection failed: {e}")
 # ========== MAIN CONTENT ==========
 st.markdown('<h1 class="main-header">📖 Quran Live Scoreboard</h1>', unsafe_allow_html=True)
 
@@ -338,7 +332,9 @@ with tab4:
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #666; padding: 20px;">
-    <p>📊 Live Scoreboard | ⚡ Powered by Streamlit | 🎯 Real-time Tracking</p>
+    <p>📊 **Manual Refresh Only** - Click refresh button to update data</p>
+    <p>📊 Data source: Google Sheets | ⚡ Powered by Streamlit | 🎯 Competition Tracking</p>
     <p>© 2024 Quran Live Scoreboard</p>
 </div>
 """, unsafe_allow_html=True)
+
